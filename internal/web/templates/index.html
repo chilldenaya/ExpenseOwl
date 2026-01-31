@@ -43,6 +43,9 @@
                 <a href="/table" class="view-button" data-tooltip="Table View">
                     <i class="fa-solid fa-table"></i>
                 </a>
+                <a href="/investment" class="view-button" data-tooltip="Assets">
+                    <i class="fa-solid fa-coins"></i>
+                </a>
                 <a href="/settings" class="view-button" data-tooltip="Settings">
                     <i class="fa-solid fa-gear"></i>
                 </a>
@@ -56,6 +59,9 @@
         </div>
 
         <div class="table-controls">
+            <button id="toggleAmountsVisibility" class="nav-button" type="button" title="Hide or show amount numbers">
+                <i class="fa-solid fa-eye-slash" id="toggleAmountsIcon"></i> <span id="toggleAmountsLabel">Hide amounts</span>
+            </button>
             <button id="toggleExpenseFormBtn" class="nav-button"><i class="fa-solid fa-plus"></i> Add Expense</button>
         </div>
 
@@ -74,11 +80,11 @@
                         </select>
                     </div>
     
-                    <div class="form-group">
-                        <label for="tags-input">Tags</label>
+                    <div id="tagsFormGroup" class="form-group" style="display: none;">
+                        <label for="tags-input">Asset type</label>
                         <div id="tags-input-container" class="tags-input-container">
                             <div id="selected-tags" class="selected-tags"></div>
-                            <input type="text" id="tags-input" placeholder="(optional)">
+                            <input type="text" id="tags-input" placeholder="Select type (required for Investment)">
                         </div>
                         <div id="tags-dropdown" class="tags-dropdown"></div>
                     </div>
@@ -139,6 +145,8 @@
 
     <script src="/functions.js"></script>
     <script>
+        const CATEGORY_INVESTMENT = 'Investment';
+        let investmentTypeSuggestions = ['Index', 'Crypto', 'ETF', 'Bonds'];
         let currentCurrency = 'usd';
         let startDate = 1;
         let pieChart = null;
@@ -148,6 +156,18 @@
         let categoryColors = {};
         let allTags = new Set();
         let selectedTags = new Set();
+
+        const DASHBOARD_AMOUNTS_VISIBLE_KEY = 'expenseowl_dashboard_amounts_visible';
+        function getAmountsVisible() {
+            const stored = sessionStorage.getItem(DASHBOARD_AMOUNTS_VISIBLE_KEY);
+            return stored === 'true';
+        }
+        function setAmountsVisible(visible) {
+            sessionStorage.setItem(DASHBOARD_AMOUNTS_VISIBLE_KEY, String(visible));
+        }
+        function formatAmount(amount) {
+            return getAmountsVisible() ? formatCurrency(amount) : '***** ' + getCurrencySymbol(currentCurrency);
+        }
 
         function assignCategoryColors(categories) {
             categories.forEach((category, index) => {
@@ -188,6 +208,12 @@
                 .reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
         }
 
+        function calculateInvestments(expenses) {
+            return expenses
+                .filter(exp => exp.category === CATEGORY_INVESTMENT)
+                .reduce((sum, exp) => sum + (-exp.amount), 0);
+        }
+
         function updateChartAndLegend() {
             const monthExpenses = getMonthExpenses(allExpenses);
             const chartBox = document.querySelector('.chart-box');
@@ -222,9 +248,9 @@
             const expenseTotal = calculateExpenses(expenses);
             const balance = income - expenseTotal;
             
-            document.getElementById('cashflow-income').textContent = formatCurrency(income);
-            document.getElementById('cashflow-expenses').textContent = formatCurrency(expenseTotal);
-            document.getElementById('cashflow-balance').textContent = formatCurrency(balance);
+            document.getElementById('cashflow-income').textContent = formatAmount(income);
+            document.getElementById('cashflow-expenses').textContent = formatAmount(expenseTotal);
+            document.getElementById('cashflow-balance').textContent = formatAmount(balance);
             
             const balanceElement = document.getElementById('cashflow-balance');
             if (balance >= 0) {
@@ -262,7 +288,7 @@
                                     const value = context.raw;
                                     const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
                                     const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                    return `${context.label}: ${formatAmount(value)} (${percentage}%)`;
                                 }
                             }
                         }
@@ -293,7 +319,7 @@
                 const color = categoryColors[category];
                 const categoryDataItem = categoryMap.get(category);
                 const percentage = categoryDataItem ? ` (${categoryDataItem.percentage.toFixed(1)}%)` : '';
-                const amount = categoryDataItem ? formatCurrency(categoryDataItem.total) : '';
+                const amount = categoryDataItem ? formatAmount(categoryDataItem.total) : '';
                 item.innerHTML = `
                     <div class="color-box" style="background-color: ${color}"></div>
                     <div class="legend-text">
@@ -314,7 +340,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Total:</span>
                         <span class="amount">
-                            ${formatCurrency(activeTotalExpenses)}
+                            ${formatAmount(activeTotalExpenses)}
                         </span>
                     </div>
                 </div>
@@ -342,6 +368,9 @@
                 ).join('');
                 currentCurrency = config.currency;
                 startDate = config.startDate;
+                investmentTypeSuggestions = Array.isArray(config.investmentTypes) && config.investmentTypes.length > 0
+                    ? config.investmentTypes
+                    : ['Index', 'Crypto', 'ETF', 'Bonds'];
                 
                 const response = await fetch('/expenses');
                 if (!response.ok) throw new Error('Failed to fetch data');
@@ -355,7 +384,9 @@
                     }
                 });
                 
-                const uniqueCategories = [...new Set(allExpenses.map(exp => exp.category))];
+                const expenseCategories = allExpenses.map(exp => exp.category);
+                const configCategories = config.categories || [];
+                const uniqueCategories = [...new Set([...expenseCategories, ...configCategories])];
                 assignCategoryColors(uniqueCategories);
                 updateMonthDisplay();
                 updateChartAndLegend();
@@ -378,8 +409,10 @@
 
             const addTag = (tag) => {
                 tag = tag.trim();
-                if (tag && !selectedTags.has(tag)) {
+                if (tag) {
+                    selectedTags.clear();
                     selectedTags.add(tag);
+                    selectedContainer.innerHTML = '';
                     const pill = document.createElement('div');
                     pill.className = 'tag-pill';
                     pill.textContent = tag;
@@ -397,9 +430,48 @@
                 dropdown.style.display = 'none';
             };
 
+            const toggleTagsVisibility = () => {
+                const isInvestment = document.getElementById('category').value === CATEGORY_INVESTMENT;
+                const tagsFormGroup = document.getElementById('tagsFormGroup');
+                if (isInvestment) {
+                    tagsFormGroup.style.display = 'block';
+                } else {
+                    tagsFormGroup.style.display = 'none';
+                    selectedTags.clear();
+                    selectedContainer.innerHTML = '';
+                    input.value = '';
+                    dropdown.style.display = 'none';
+                }
+            };
+
+            const getAvailableTagsForDropdown = () => {
+                let available = [...allTags].filter(t => !selectedTags.has(t));
+                if (investmentTypeSuggestions.length > 0) {
+                    const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t));
+                    const rest = available.filter(t => !investmentTypeSuggestions.includes(t));
+                    available = [...suggested, ...rest];
+                }
+                return available;
+            };
+
+            document.getElementById('category').addEventListener('change', () => {
+                toggleTagsVisibility();
+                if (document.getElementById('category').value === CATEGORY_INVESTMENT && input === document.activeElement) {
+                    dropdown.innerHTML = '';
+                    const availableTags = getAvailableTagsForDropdown();
+                    availableTags.forEach(tag => {
+                        const item = document.createElement('div');
+                        item.textContent = tag;
+                        item.onclick = () => addTag(tag);
+                        dropdown.appendChild(item);
+                    });
+                    dropdown.style.display = availableTags.length > 0 ? 'block' : 'none';
+                }
+            });
+
             input.addEventListener('focus', () => {
                 dropdown.innerHTML = '';
-                const availableTags = [...allTags].filter(tag => !selectedTags.has(tag));
+                const availableTags = getAvailableTagsForDropdown();
                 if (availableTags.length > 0) {
                     availableTags.forEach(tag => {
                         const item = document.createElement('div');
@@ -414,7 +486,10 @@
             input.addEventListener('input', () => {
                 const value = input.value.trim().toLowerCase();
                 dropdown.innerHTML = '';
-                const filteredTags = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
+                let filteredTags = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
+                const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t) && t.toLowerCase().includes(value));
+                const rest = filteredTags.filter(t => !investmentTypeSuggestions.includes(t));
+                filteredTags = [...suggested, ...rest];
                 
                 if (value && ![...allTags].map(t => t.toLowerCase()).includes(value)) {
                     const newItem = document.createElement('div');
@@ -449,7 +524,27 @@
                     dropdown.style.display = 'none';
                 }
             });
+            toggleTagsVisibility();
         }
+
+        function applyAmountsToggleButton() {
+            const visible = getAmountsVisible();
+            const icon = document.getElementById('toggleAmountsIcon');
+            const label = document.getElementById('toggleAmountsLabel');
+            if (visible) {
+                icon.className = 'fa-solid fa-eye-slash';
+                label.textContent = 'Hide amounts';
+            } else {
+                icon.className = 'fa-solid fa-eye';
+                label.textContent = 'Show amounts';
+            }
+        }
+        applyAmountsToggleButton();
+        document.getElementById('toggleAmountsVisibility').addEventListener('click', () => {
+            setAmountsVisible(!getAmountsVisible());
+            applyAmountsToggleButton();
+            updateChartAndLegend();
+        });
 
         document.getElementById('prevMonth').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
@@ -478,6 +573,14 @@
 
         document.getElementById('expenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const category = document.getElementById('category').value;
+            if (category === CATEGORY_INVESTMENT && selectedTags.size === 0) {
+                const messageDiv = document.getElementById('formMessage');
+                messageDiv.textContent = 'Please select an asset type for Investment category.';
+                messageDiv.className = 'form-message error';
+                setTimeout(() => { messageDiv.textContent = ''; messageDiv.className = 'form-message'; }, 3000);
+                return;
+            }
             const isGain = document.getElementById('reportGain').checked;
             let amount = parseFloat(document.getElementById('amount').value);
             if (!isGain) {
@@ -485,7 +588,7 @@
             }
             const formData = {
                 name: document.getElementById('name').value,
-                category: document.getElementById('category').value,
+                category: category,
                 amount: amount,
                 date: getISODateWithLocalTime(document.getElementById('date').value),
                 tags: Array.from(selectedTags)

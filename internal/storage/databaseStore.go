@@ -49,9 +49,11 @@ const (
 	CREATE TABLE IF NOT EXISTS config (
 		id VARCHAR(255) PRIMARY KEY DEFAULT 'default',
 		categories TEXT NOT NULL,
+		investment_types TEXT DEFAULT '[]',
 		currency VARCHAR(255) NOT NULL,
 		start_date INTEGER NOT NULL
 	);`
+	alterConfigInvestmentTypesSQL = `ALTER TABLE config ADD COLUMN IF NOT EXISTS investment_types TEXT DEFAULT '[]'`
 )
 
 func InitializePostgresStore(baseConfig SystemConfig) (Storage, error) {
@@ -81,6 +83,9 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 	}
+	if _, err := db.Exec(alterConfigInvestmentTypesSQL); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -93,15 +98,20 @@ func (s *databaseStore) saveConfig(config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal categories: %v", err)
 	}
+	investmentTypesJSON, err := json.Marshal(config.InvestmentTypes)
+	if err != nil {
+		return fmt.Errorf("failed to marshal investment types: %v", err)
+	}
 	query := `
-		INSERT INTO config (id, categories, currency, start_date)
-		VALUES ('default', $1, $2, $3)
+		INSERT INTO config (id, categories, investment_types, currency, start_date)
+		VALUES ('default', $1, $2, $3, $4)
 		ON CONFLICT (id) DO UPDATE SET
 			categories = EXCLUDED.categories,
+			investment_types = EXCLUDED.investment_types,
 			currency = EXCLUDED.currency,
 			start_date = EXCLUDED.start_date;
 	`
-	_, err = s.db.Exec(query, string(categoriesJSON), config.Currency, config.StartDate)
+	_, err = s.db.Exec(query, string(categoriesJSON), string(investmentTypesJSON), config.Currency, config.StartDate)
 	s.defaults["currency"] = config.Currency
 	s.defaults["start_date"] = fmt.Sprintf("%d", config.StartDate)
 	return err
@@ -119,10 +129,10 @@ func (s *databaseStore) updateConfig(updater func(c *Config) error) error {
 }
 
 func (s *databaseStore) GetConfig() (*Config, error) {
-	query := `SELECT categories, currency, start_date FROM config WHERE id = 'default'`
-	var categoriesStr, currency string
+	query := `SELECT categories, COALESCE(investment_types, '[]'), currency, start_date FROM config WHERE id = 'default'`
+	var categoriesStr, investmentTypesStr, currency string
 	var startDate int
-	err := s.db.QueryRow(query).Scan(&categoriesStr, &currency, &startDate)
+	err := s.db.QueryRow(query).Scan(&categoriesStr, &investmentTypesStr, &currency, &startDate)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -141,6 +151,12 @@ func (s *databaseStore) GetConfig() (*Config, error) {
 	config.StartDate = startDate
 	if err := json.Unmarshal([]byte(categoriesStr), &config.Categories); err != nil {
 		return nil, fmt.Errorf("failed to parse categories from db: %v", err)
+	}
+	if err := json.Unmarshal([]byte(investmentTypesStr), &config.InvestmentTypes); err != nil {
+		return nil, fmt.Errorf("failed to parse investment types from db: %v", err)
+	}
+	if len(config.InvestmentTypes) == 0 {
+		config.InvestmentTypes = defaultInvestmentTypes
 	}
 
 	recurring, err := s.GetRecurringExpenses()
@@ -163,6 +179,24 @@ func (s *databaseStore) GetCategories() ([]string, error) {
 func (s *databaseStore) UpdateCategories(categories []string) error {
 	return s.updateConfig(func(c *Config) error {
 		c.Categories = categories
+		return nil
+	})
+}
+
+func (s *databaseStore) GetInvestmentTypes() ([]string, error) {
+	config, err := s.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	if len(config.InvestmentTypes) == 0 {
+		return defaultInvestmentTypes, nil
+	}
+	return config.InvestmentTypes, nil
+}
+
+func (s *databaseStore) UpdateInvestmentTypes(types []string) error {
+	return s.updateConfig(func(c *Config) error {
+		c.InvestmentTypes = types
 		return nil
 	})
 }

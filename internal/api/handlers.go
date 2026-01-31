@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tanq16/expenseowl/internal/storage"
@@ -93,6 +94,45 @@ func (h *Handler) UpdateCategories(w http.ResponseWriter, r *http.Request) {
 	if err := h.storage.UpdateCategories(sanitizedCategories); err != nil {
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to update categories"})
 		log.Printf("API ERROR: Failed to update categories: %v\n", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func (h *Handler) GetInvestmentTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	types, err := h.storage.GetInvestmentTypes()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to get investment types"})
+		log.Printf("API ERROR: Failed to get investment types: %v\n", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, types)
+}
+
+func (h *Handler) UpdateInvestmentTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	var types []string
+	if err := json.NewDecoder(r.Body).Decode(&types); err != nil {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
+		return
+	}
+	var sanitized []string
+	for _, t := range types {
+		trimmed := strings.TrimSpace(t)
+		if trimmed != "" {
+			sanitized = append(sanitized, trimmed)
+		}
+	}
+	if err := h.storage.UpdateInvestmentTypes(sanitized); err != nil {
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to update investment types"})
+		log.Printf("API ERROR: Failed to update investment types: %v\n", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "success"})
@@ -381,6 +421,17 @@ func (h *Handler) ServeSettingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html")
 	if err := web.ServeTemplate(w, "settings.html"); err != nil {
+		http.Error(w, "Failed to serve template", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) ServeInvestmentPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	if err := web.ServeTemplate(w, "investment.html"); err != nil {
 		http.Error(w, "Failed to serve template", http.StatusInternalServerError)
 	}
 }

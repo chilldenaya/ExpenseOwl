@@ -16,8 +16,8 @@ type Storage interface {
 	// Basic Config Updates
 	GetCategories() ([]string, error)
 	UpdateCategories(categories []string) error
-	// GetTags() ([]string, error)
-	// UpdateTags(tags []string) error
+	GetInvestmentTypes() ([]string, error)
+	UpdateInvestmentTypes(types []string) error
 	GetCurrency() (string, error)
 	UpdateCurrency(currency string) error
 	GetStartDate() (int, error)
@@ -47,10 +47,10 @@ type Storage interface {
 // config for expense data
 type Config struct {
 	Categories        []string           `json:"categories"`
+	InvestmentTypes   []string           `json:"investmentTypes"`
 	Currency          string             `json:"currency"`
 	StartDate         int                `json:"startDate"`
 	RecurringExpenses []RecurringExpense `json:"recurringExpenses"`
-	// Tags              []string           `json:"tags"`
 }
 
 type RecurringExpense struct {
@@ -95,9 +95,9 @@ type Expense struct {
 
 func (c *Config) SetBaseConfig() {
 	c.Categories = defaultCategories
+	c.InvestmentTypes = defaultInvestmentTypes
 	c.Currency = "usd"
 	c.StartDate = 1
-	// c.Tags = []string{}
 	c.RecurringExpenses = []RecurringExpense{}
 }
 
@@ -245,6 +245,15 @@ var defaultCategories = []string{
 	"Shopping",
 	"Miscellaneous",
 	"Income",
+	"Investment",
+}
+
+var defaultInvestmentTypes = []string{
+	"Index",
+	"Crypto",
+	"ETF",
+	"Bonds",
+	"Gold",
 }
 
 var SupportedCurrencies = []string{

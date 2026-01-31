@@ -30,6 +30,9 @@
                 <a href="/table" class="view-button" data-tooltip="Table View">
                     <i class="fa-solid fa-table"></i>
                 </a>
+                <a href="/investment" class="view-button" data-tooltip="Assets">
+                    <i class="fa-solid fa-coins"></i>
+                </a>
                 <a href="/settings" class="view-button active" data-tooltip="Settings">
                     <i class="fa-solid fa-gear"></i>
                 </a>
@@ -55,6 +58,21 @@
                 </div>
                 <button id="saveCategories" class="nav-button">Save Categories</button>
                 <div id="categoriesMessage" class="form-message"></div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2 align="center">Asset Types</h2>
+            <div id="investment-types-manager">
+                <p class="settings-hint">Types used for asset transactions (e.g. Index, Crypto, ETF, Bonds). Shown in the Assets tab and when selecting Investment category.</p>
+                <div id="investment-types-list" class="categories-list">
+                </div>
+                <div class="category-input-container">
+                    <input type="text" id="newInvestmentType" placeholder="Add new asset type">
+                    <button id="addInvestmentType" class="nav-button">Add</button>
+                </div>
+                <button id="saveInvestmentTypes" class="nav-button">Save Asset Types</button>
+                <div id="investmentTypesMessage" class="form-message"></div>
             </div>
         </div>
 
@@ -247,6 +265,7 @@
     <script src="/functions.js"></script>
     <script>
         let categories = [];
+        let investmentTypes = [];
         let allTags = new Set();
         let addFormSelectedTags = new Set();
         let editFormSelectedTags = new Set();
@@ -389,6 +408,63 @@
             } catch (error) {
                 console.error('Error saving categories:', error);
                 showMessage('categoriesMessage', 'Error saving categories', false);
+            }
+        }
+
+        // --- Investment Types Management ---
+        function renderInvestmentTypes() {
+            const list = document.getElementById('investment-types-list');
+            list.innerHTML = '';
+            investmentTypes.forEach((typeName, index) => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <div class="category-handle-area">
+                        <span>${typeName.replace(/[<>]/g, ' ')}</span>
+                    </div>
+                    <button class="delete-button" onclick="removeInvestmentType(${index})">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addInvestmentType() {
+            const input = document.getElementById('newInvestmentType');
+            let typeName = input.value.trim().replace(/[<>]/g, ' ').trim();
+            if (typeName && !investmentTypes.includes(typeName)) {
+                investmentTypes.push(typeName);
+                renderInvestmentTypes();
+                input.value = '';
+            } else if (investmentTypes.includes(typeName)) {
+                showMessage('investmentTypesMessage', 'Type already exists', false);
+            } else {
+                showMessage('investmentTypesMessage', 'Type name cannot be empty.', false);
+            }
+        }
+
+        function removeInvestmentType(index) {
+            investmentTypes.splice(index, 1);
+            renderInvestmentTypes();
+        }
+
+        async function saveInvestmentTypes() {
+            try {
+                const response = await fetch('/investment-types/edit', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(investmentTypes)
+                });
+                if (response.ok) {
+                    showMessage('investmentTypesMessage', 'Asset types saved successfully', true);
+                } else {
+                    const error = await response.json();
+                    showMessage('investmentTypesMessage', `Failed to save: ${error.error}`, false);
+                }
+            } catch (error) {
+                console.error('Error saving investment types:', error);
+                showMessage('investmentTypesMessage', 'Error saving asset types', false);
             }
         }
         
@@ -782,6 +858,7 @@
                 recurringExpenses = await recurringExpensesResponse.json() || [];
 
                 categories = [...config.categories];
+                investmentTypes = [...(config.investmentTypes || ['Index', 'Crypto', 'ETF', 'Bonds'])];
                 currentCurrency = config.currency;
                 currentStartDate = config.startDate;
                 allTags.clear();
@@ -789,6 +866,7 @@
                 (recurringExpenses || []).forEach(exp => (exp.tags || []).forEach(tag => allTags.add(tag)));
 
                 renderCategories();
+                renderInvestmentTypes();
                 populateCurrencySelect();
                 populateStartDateInput();
                 document.getElementById('recurringCategory').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -831,6 +909,9 @@
         // --- Event Listeners ---
         document.getElementById('addCategory').addEventListener('click', addCategory);
         document.getElementById('saveCategories').addEventListener('click', saveCategories);
+        document.getElementById('addInvestmentType').addEventListener('click', addInvestmentType);
+        document.getElementById('saveInvestmentTypes').addEventListener('click', saveInvestmentTypes);
+        document.getElementById('newInvestmentType').addEventListener('keypress', e => e.key === 'Enter' && addInvestmentType());
         document.getElementById('saveCurrency').addEventListener('click', saveCurrency);
         document.getElementById('saveStartDate').addEventListener('click', saveStartDate);
         document.getElementById('csv-import-file').addEventListener('change', handleCsvImport);

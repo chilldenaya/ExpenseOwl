@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/fa.min.css">
+    <link rel="stylesheet" href="/style.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme') || 'system';
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <title>ExpenseOwl Assets</title>
+    <script src="/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="nav-bar">
+                <a href="/">
+                    <img src="/pwa/icon-192.png" alt="ExpenseOwl Logo" height="85" style="vertical-align: middle; margin-right: 20px;">
+                </a>
+                <a href="/" class="view-button" data-tooltip="Dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </a>
+                <a href="/table" class="view-button" data-tooltip="Table View">
+                    <i class="fa-solid fa-table"></i>
+                </a>
+                <a href="/investment" class="view-button active" data-tooltip="Assets">
+                    <i class="fa-solid fa-coins"></i>
+                </a>
+                <a href="/settings" class="view-button" data-tooltip="Settings">
+                    <i class="fa-solid fa-gear"></i>
+                </a>
+            </div>
+        </header>
+
+        <div class="table-controls" style="margin-bottom: 1rem;">
+            <button id="toggleAmountsVisibility" class="nav-button" type="button" title="Hide or show amount numbers">
+                <i class="fa-solid fa-eye-slash" id="toggleAmountsIcon"></i> <span id="toggleAmountsLabel">Hide amounts</span>
+            </button>
+        </div>
+
+        <div class="investment-summary">
+            <h2>Total Assets</h2>
+            <div class="investment-total-value" id="investmentTotalValue">—</div>
+            <p class="investment-summary-note">Net assets: add asset (inflow) minus reduce asset (outflow), all time</p>
+        </div>
+
+        <div id="investment-chart-section" class="chart-container" style="display: none;">
+            <div id="investmentNoDataMessage" class="no-data" style="display: none; width: 100%;">Add types (e.g. Index, Crypto, ETF, Bonds) to your asset transactions to see the breakdown chart.</div>
+            <div class="chart-box">
+                <canvas id="investmentPieChart"></canvas>
+            </div>
+            <div class="legend-box" id="investmentLegend"></div>
+        </div>
+
+        <div id="investment-breakdown-section" class="investment-container">
+            <h3>Breakdown by type</h3>
+            <div id="investment-breakdown"></div>
+        </div>
+
+        <div class="table-controls">
+            <button id="toggleAddFormBtn" class="nav-button"><i class="fa-solid fa-plus"></i> Add asset / Reduce asset</button>
+        </div>
+
+        <div id="addInvestmentContainer" style="display: none;">
+            <div class="form-container">
+                <form id="investmentForm" class="expense-form">
+                    <div class="form-group">
+                        <label>Transaction type</label>
+                        <div class="asset-type-radio">
+                            <label><input type="radio" name="assetTransactionType" value="add" checked> Add asset</label>
+                            <label><input type="radio" name="assetTransactionType" value="reduce"> Reduce asset</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" value="-" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags-input">Asset type <span class="required-asterisk">*</span></label>
+                        <div id="tags-input-container" class="tags-input-container">
+                            <div id="selected-tags" class="selected-tags"></div>
+                            <input type="text" id="tags-input" placeholder="Select type (required)">
+                        </div>
+                        <div id="tags-dropdown" class="tags-dropdown"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <button type="submit" class="nav-button">Save transaction</button>
+                </form>
+                <div id="formMessage" class="form-message"></div>
+            </div>
+        </div>
+
+        <div class="investment-list-section">
+            <h3>All asset transactions</h3>
+            <div id="investmentListContainer"></div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3>Delete asset transaction</h3>
+            <p>Remove this entry? (cannot be undone)</p>
+            <div class="modal-buttons">
+                <button class="modal-button" onclick="closeDeleteModal()">Cancel</button>
+                <button class="modal-button confirm" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/functions.js"></script>
+    <script>
+        const CATEGORY_INVESTMENT = 'Investment';
+        let investmentTypeSuggestions = ['Index', 'Crypto', 'ETF', 'Bonds'];
+        let currentCurrency = 'usd';
+        let allExpenses = [];
+        let investmentExpenses = [];
+        let allTags = new Set();
+        let selectedTags = new Set();
+        let deleteTargetId = null;
+        let investmentPieChart = null;
+        let tagColors = {};
+
+        const ASSETS_AMOUNTS_VISIBLE_KEY = 'expenseowl_assets_amounts_visible';
+        function getAmountsVisible() {
+            const stored = sessionStorage.getItem(ASSETS_AMOUNTS_VISIBLE_KEY);
+            return stored === 'true';
+        }
+        function setAmountsVisible(visible) {
+            sessionStorage.setItem(ASSETS_AMOUNTS_VISIBLE_KEY, String(visible));
+        }
+        function formatAmount(amount) {
+            return getAmountsVisible() ? formatCurrency(amount) : '***** ' + getCurrencySymbol(currentCurrency);
+        }
+
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.color = '#b3b3b3';
+            Chart.defaults.borderColor = '#606060';
+            Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        }
+
+        function getAssetTransactions() {
+            return allExpenses
+                .filter(exp => exp.category === CATEGORY_INVESTMENT)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
+        function totalAssets(expenses) {
+            return expenses
+                .filter(exp => exp.category === CATEGORY_INVESTMENT)
+                .reduce((sum, exp) => sum + (-exp.amount), 0);
+        }
+
+        function getBreakdownByTag(expenses) {
+            const inv = expenses.filter(exp => exp.category === CATEGORY_INVESTMENT);
+            const byTag = {};
+            inv.forEach(exp => {
+                const contribution = -exp.amount;
+                (exp.tags || []).forEach(tag => {
+                    byTag[tag] = (byTag[tag] || 0) + contribution;
+                });
+            });
+            return Object.entries(byTag).filter(([, amt]) => amt > 0).sort((a, b) => b[1] - a[1]);
+        }
+
+        function createInvestmentChart(chartData) {
+            if (investmentPieChart) investmentPieChart.destroy();
+            investmentPieChart = new Chart('investmentPieChart', {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.map(c => c.tag),
+                    datasets: [{
+                        data: chartData.map(c => c.total),
+                        backgroundColor: chartData.map(c => tagColors[c.tag] || colorPalette[0]),
+                        borderColor: '#1a1a1a',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${context.label}: ${formatAmount(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateInvestmentLegend(chartData) {
+            const legendContainer = document.getElementById('investmentLegend');
+            legendContainer.innerHTML = '';
+            chartData.forEach(({ tag, total, percentage }) => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                const color = tagColors[tag] || colorPalette[0];
+                item.innerHTML = `
+                    <div class="color-box" style="background-color: ${color}"></div>
+                    <div class="legend-text">
+                        <span>${escapeHTML(tag)} (${percentage.toFixed(1)}%)</span>
+                        <span class="amount">${formatAmount(total)}</span>
+                    </div>
+                `;
+                legendContainer.appendChild(item);
+            });
+            const totalAmount = chartData.reduce((sum, c) => sum + c.total, 0);
+            legendContainer.insertAdjacentHTML('beforeend', `
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Total:</span>
+                        <span class="amount">${formatAmount(totalAmount)}</span>
+                    </div>
+                </div>
+            `);
+        }
+
+        function render() {
+            investmentExpenses = getAssetTransactions();
+            const total = totalAssets(allExpenses);
+            const breakdown = getBreakdownByTag(allExpenses);
+
+            document.getElementById('investmentTotalValue').textContent = formatAmount(total);
+
+            const chartSection = document.getElementById('investment-chart-section');
+            const chartBox = chartSection.querySelector('.chart-box');
+            const legendBox = document.getElementById('investmentLegend');
+            const noDataMessage = document.getElementById('investmentNoDataMessage');
+
+            if (breakdown.length > 0) {
+                chartSection.style.display = 'flex';
+                chartBox.style.display = 'flex';
+                legendBox.style.display = 'flex';
+                noDataMessage.style.display = 'none';
+                breakdown.forEach(([tag], i) => {
+                    if (!tagColors[tag]) tagColors[tag] = colorPalette[i % colorPalette.length];
+                });
+                const totalForPct = breakdown.reduce((sum, [, amt]) => sum + amt, 0);
+                const chartData = breakdown.map(([tag, amount]) => ({
+                    tag,
+                    total: amount,
+                    percentage: totalForPct > 0 ? (amount / totalForPct) * 100 : 0
+                }));
+                createInvestmentChart(chartData);
+                updateInvestmentLegend(chartData);
+            } else {
+                chartSection.style.display = 'flex';
+                chartBox.style.display = 'none';
+                legendBox.style.display = 'none';
+                noDataMessage.style.display = 'block';
+                noDataMessage.style.width = '100%';
+                if (investmentPieChart) {
+                    investmentPieChart.destroy();
+                    investmentPieChart = null;
+                }
+            }
+
+            const breakdownEl = document.getElementById('investment-breakdown');
+            if (breakdown.length > 0) {
+                breakdownEl.innerHTML = breakdown
+                    .map(([tag, amount]) => `<div class="investment-breakdown-item"><span>${escapeHTML(tag)}</span><span class="amount">${formatAmount(amount)}</span></div>`)
+                    .join('');
+            } else {
+                breakdownEl.innerHTML = '<p class="investment-no-tags">Add tags (e.g. Index, Crypto, ETF, Bonds) to see breakdown.</p>';
+            }
+
+            const listContainer = document.getElementById('investmentListContainer');
+            if (investmentExpenses.length === 0) {
+                listContainer.innerHTML = '<div class="no-data">No asset transactions yet. Add or reduce assets above.</div>';
+            } else {
+                listContainer.innerHTML = `
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th class="tags-column">Asset type</th>
+                                <th>Amount</th>
+                                <th class="date-header">Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${investmentExpenses.map(exp => {
+                                const isAdd = exp.amount < 0;
+                                const action = isAdd ? 'Add' : 'Reduce';
+                                return `
+                                <tr>
+                                    <td>${action}</td>
+                                    <td>${escapeHTML(exp.name)}</td>
+                                    <td class="tags-column">${(exp.tags || []).map(escapeHTML).join(', ')}</td>
+                                    <td class="amount">${formatAmount(Math.abs(exp.amount))}</td>
+                                    <td class="date-column">${formatDateFromUTC(exp.date)}</td>
+                                    <td>
+                                        <button class="delete-button" onclick="handleDeleteClick('${exp.id}')" title="Delete">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        function handleDeleteClick(id) {
+            deleteTargetId = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            deleteTargetId = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteTargetId) return;
+            try {
+                const res = await fetch(`/expense/delete?id=${encodeURIComponent(deleteTargetId)}`, { method: 'DELETE' });
+                if (res.ok) {
+                    closeDeleteModal();
+                    await loadData();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to delete');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to delete');
+            }
+        }
+
+        async function loadData() {
+            const configRes = await fetch('/config');
+            if (!configRes.ok) throw new Error('Failed to fetch config');
+            const config = await configRes.json();
+            currentCurrency = config.currency;
+            investmentTypeSuggestions = Array.isArray(config.investmentTypes) && config.investmentTypes.length > 0
+                ? config.investmentTypes
+                : ['Index', 'Crypto', 'ETF', 'Bonds'];
+
+            const expensesRes = await fetch('/expenses');
+            if (!expensesRes.ok) throw new Error('Failed to fetch expenses');
+            const data = await expensesRes.json();
+            allExpenses = Array.isArray(data) ? data : (data && Array.isArray(data.expenses) ? data.expenses : []);
+
+            allTags.clear();
+            allExpenses.forEach(exp => {
+                if (exp.tags) exp.tags.forEach(tag => allTags.add(tag));
+            });
+            investmentTypeSuggestions.forEach(t => allTags.add(t));
+
+            render();
+        }
+
+        function setupTagInput() {
+            const container = document.getElementById('tags-input-container');
+            const input = document.getElementById('tags-input');
+            const dropdown = document.getElementById('tags-dropdown');
+            const selectedContainer = document.getElementById('selected-tags');
+
+            const addTag = (tag) => {
+                tag = (tag || '').trim();
+                if (tag) {
+                    selectedTags.clear();
+                    selectedTags.add(tag);
+                    selectedContainer.innerHTML = '';
+                    const pill = document.createElement('div');
+                    pill.className = 'tag-pill';
+                    pill.textContent = tag;
+                    const removeBtn = document.createElement('span');
+                    removeBtn.className = 'remove-tag';
+                    removeBtn.textContent = '×';
+                    removeBtn.onclick = () => {
+                        selectedTags.delete(tag);
+                        pill.remove();
+                    };
+                    pill.appendChild(removeBtn);
+                    selectedContainer.appendChild(pill);
+                }
+                input.value = '';
+                dropdown.style.display = 'none';
+            };
+
+            input.addEventListener('focus', () => {
+                dropdown.innerHTML = '';
+                const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t));
+                const rest = [...allTags].filter(t => !selectedTags.has(t) && !investmentTypeSuggestions.includes(t));
+                [...suggested, ...rest].forEach(tag => {
+                    const item = document.createElement('div');
+                    item.textContent = tag;
+                    item.onclick = () => addTag(tag);
+                    dropdown.appendChild(item);
+                });
+                if (dropdown.children.length > 0) dropdown.style.display = 'block';
+            });
+
+            input.addEventListener('input', () => {
+                const value = input.value.trim().toLowerCase();
+                dropdown.innerHTML = '';
+                let filtered = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
+                const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t) && t.toLowerCase().includes(value));
+                const rest = filtered.filter(t => !investmentTypeSuggestions.includes(t));
+                filtered = [...suggested, ...rest];
+                if (value && ![...allTags].map(t => t.toLowerCase()).includes(value)) {
+                    const newItem = document.createElement('div');
+                    newItem.textContent = `+ Create "${input.value.trim()}"`;
+                    newItem.className = 'new-tag';
+                    newItem.onclick = () => addTag(input.value.trim());
+                    dropdown.appendChild(newItem);
+                }
+                filtered.forEach(tag => {
+                    const item = document.createElement('div');
+                    item.textContent = tag;
+                    item.onclick = () => addTag(tag);
+                    dropdown.appendChild(item);
+                });
+                dropdown.style.display = dropdown.children.length > 0 ? 'block' : 'none';
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (input.value.trim()) addTag(input.value.trim());
+                }
+            });
+
+            container.addEventListener('click', () => input.focus());
+            document.addEventListener('click', (e) => {
+                if (!container.closest('.form-container').contains(e.target)) dropdown.style.display = 'none';
+            });
+        }
+
+        async function initialize() {
+            try {
+                await loadData();
+                setupTagInput();
+
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                const d = String(today.getDate()).padStart(2, '0');
+                document.getElementById('date').value = `${y}-${m}-${d}`;
+
+                function applyAmountsToggleButton() {
+                    const visible = getAmountsVisible();
+                    const icon = document.getElementById('toggleAmountsIcon');
+                    const label = document.getElementById('toggleAmountsLabel');
+                    if (visible) {
+                        icon.className = 'fa-solid fa-eye-slash';
+                        label.textContent = 'Hide amounts';
+                    } else {
+                        icon.className = 'fa-solid fa-eye';
+                        label.textContent = 'Show amounts';
+                    }
+                }
+                applyAmountsToggleButton();
+                document.getElementById('toggleAmountsVisibility').addEventListener('click', () => {
+                    setAmountsVisible(!getAmountsVisible());
+                    applyAmountsToggleButton();
+                    render();
+                });
+
+                document.getElementById('toggleAddFormBtn').addEventListener('click', () => {
+                    const el = document.getElementById('addInvestmentContainer');
+                    const btn = document.getElementById('toggleAddFormBtn');
+                    if (el.style.display === 'none' || !el.style.display) {
+                        el.style.display = 'block';
+                        btn.innerHTML = '<i class="fa-solid fa-times"></i> Close';
+                    } else {
+                        el.style.display = 'none';
+                        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add asset / Reduce asset';
+                    }
+                });
+
+                document.getElementById('investmentForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (selectedTags.size === 0) {
+                        const messageDiv = document.getElementById('formMessage');
+                        messageDiv.textContent = 'Please select an asset type.';
+                        messageDiv.className = 'form-message error';
+                        setTimeout(() => { messageDiv.textContent = ''; messageDiv.className = 'form-message'; }, 3000);
+                        return;
+                    }
+                    const amountInput = parseFloat(document.getElementById('amount').value);
+                    if (amountInput <= 0) return;
+                    const isAdd = document.querySelector('input[name="assetTransactionType"]:checked').value === 'add';
+                    const amount = isAdd ? -Math.abs(amountInput) : Math.abs(amountInput);
+                    const formData = {
+                        name: document.getElementById('name').value || '-',
+                        category: CATEGORY_INVESTMENT,
+                        amount: amount,
+                        date: getISODateWithLocalTime(document.getElementById('date').value),
+                        tags: Array.from(selectedTags)
+                    };
+                    try {
+                        const res = await fetch('/expense', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(formData)
+                        });
+                        const messageDiv = document.getElementById('formMessage');
+                        if (res.ok) {
+                            messageDiv.textContent = isAdd ? 'Asset added.' : 'Asset reduced.';
+                            messageDiv.className = 'form-message success';
+                            document.getElementById('investmentForm').reset();
+                            document.querySelector('input[name="assetTransactionType"][value="add"]').checked = true;
+                            document.getElementById('selected-tags').innerHTML = '';
+                            selectedTags.clear();
+                            const y = new Date().getFullYear(), m = String(new Date().getMonth() + 1).padStart(2, '0'), d = String(new Date().getDate()).padStart(2, '0');
+                            document.getElementById('date').value = `${y}-${m}-${d}`;
+                            document.getElementById('name').value = '-';
+                            await loadData();
+                        } else {
+                            const err = await res.json();
+                            messageDiv.textContent = err.error || 'Failed to save transaction';
+                            messageDiv.className = 'form-message error';
+                        }
+                        setTimeout(() => { messageDiv.textContent = ''; messageDiv.className = 'form-message'; }, 3000);
+                    } catch (err) {
+                        console.error(err);
+                        document.getElementById('formMessage').textContent = 'Failed to save transaction';
+                        document.getElementById('formMessage').className = 'form-message error';
+                    }
+                });
+
+                document.getElementById('name').addEventListener('click', (e) => {
+                    if (e.target.value === '-') e.target.value = '';
+                });
+            } catch (err) {
+                console.error('Failed to initialize assets:', err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>

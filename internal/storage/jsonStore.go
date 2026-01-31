@@ -127,7 +127,14 @@ func (s *jsonStore) Close() error {
 func (s *jsonStore) GetConfig() (*Config, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.readConfigFile(s.configPath)
+	config, err := s.readConfigFile(s.configPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(config.InvestmentTypes) == 0 {
+		config.InvestmentTypes = defaultInvestmentTypes
+	}
+	return config, nil
 }
 
 // Basic Config Updates
@@ -148,6 +155,28 @@ func (s *jsonStore) UpdateCategories(categories []string) error {
 		return fmt.Errorf("failed to read config file: %v", err)
 	}
 	data.Categories = categories
+	return s.writeConfigFile(s.configPath, data)
+}
+
+func (s *jsonStore) GetInvestmentTypes() ([]string, error) {
+	config, err := s.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	if len(config.InvestmentTypes) == 0 {
+		return defaultInvestmentTypes, nil
+	}
+	return config.InvestmentTypes, nil
+}
+
+func (s *jsonStore) UpdateInvestmentTypes(types []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, err := s.readConfigFile(s.configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %v", err)
+	}
+	data.InvestmentTypes = types
 	return s.writeConfigFile(s.configPath, data)
 }
 

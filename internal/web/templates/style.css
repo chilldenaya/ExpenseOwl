@@ -188,6 +188,19 @@ header {
     color: var(--text-secondary);
 }
 
+.content-hidden-placeholder {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.content-hidden-placeholder p {
+    margin: 0 0 1rem 0;
+}
+
 .no-data {
     text-align: center;
     color: var(--text-secondary);
@@ -480,6 +493,10 @@ header {
     background-color: rgba(251, 191, 36, 0.1);
 }
 
+.cashflow-item.investment {
+    background-color: rgba(139, 92, 246, 0.1);
+}
+
 .cashflow-label {
     font-size: 0.9rem;
     color: var(--text-secondary);
@@ -489,6 +506,75 @@ header {
 .cashflow-value {
     font-size: 1.4rem;
     font-weight: bold;
+}
+
+.investment-container {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+}
+
+.investment-container h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.investment-breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.investment-breakdown-item:last-child {
+    border-bottom: none;
+}
+
+.investment-no-tags {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.investment-summary {
+    text-align: center;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.investment-summary h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.investment-total-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.investment-summary-note {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.investment-list-section {
+    margin-top: 1.5rem;
+}
+
+.investment-list-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
 }
 
 .cashflow-value.positive {
@@ -550,10 +636,32 @@ header {
 .form-container.half-width {
     flex: 1;
 }
+.settings-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0 0 1rem 0;
+}
+
 .form-help-text {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
+}
+
+.asset-type-radio {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.asset-type-radio label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.required-asterisk {
+    color: #ef4444;
 }
 
 .info-field {

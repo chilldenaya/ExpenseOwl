@@ -30,6 +30,9 @@
                 <a href="/table" class="view-button active" data-tooltip="Table View">
                     <i class="fa-solid fa-table"></i>
                 </a>
+                <a href="/investment" class="view-button" data-tooltip="Assets">
+                    <i class="fa-solid fa-coins"></i>
+                </a>
                 <a href="/settings" class="view-button" data-tooltip="Settings">
                     <i class="fa-solid fa-gear"></i>
                 </a>
@@ -43,6 +46,9 @@
         </div>
         
         <div class="table-controls">
+            <button id="toggleAmountsVisibility" class="nav-button" type="button" title="Hide or show amount numbers">
+                <i class="fa-solid fa-eye-slash" id="toggleAmountsIcon"></i> <span id="toggleAmountsLabel">Hide amounts</span>
+            </button>
             <label for="showAllToggle">
                 <input type="checkbox" id="showAllToggle" class="styled-checkbox"> Show All Transactions
             </label>
@@ -62,11 +68,11 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label for="tags-input">Tags</label>
+                <div id="tagsFormGroup" class="form-group" style="display: none;">
+                    <label for="tags-input">Asset type</label>
                     <div id="tags-input-container" class="tags-input-container">
                         <div id="selected-tags" class="selected-tags"></div>
-                        <input type="text" id="tags-input" placeholder="(optional)">
+                        <input type="text" id="tags-input" placeholder="Select type (required for Investment)">
                     </div>
                     <div id="tags-dropdown" class="tags-dropdown"></div>
                 </div>
@@ -116,6 +122,8 @@
 
     <script src="/functions.js"></script>
     <script>
+        const CATEGORY_INVESTMENT = 'Investment';
+        let investmentTypeSuggestions = ['Index', 'Crypto', 'ETF', 'Bonds'];
         let currentCurrency = 'usd';
         let currentDate = new Date();
         let allExpenses = [];
@@ -123,6 +131,18 @@
         let startDate = 1;
         let allTags = new Set();
         let selectedTags = new Set();
+
+        const TABLE_AMOUNTS_VISIBLE_KEY = 'expenseowl_table_amounts_visible';
+        function getAmountsVisible() {
+            const stored = sessionStorage.getItem(TABLE_AMOUNTS_VISIBLE_KEY);
+            return stored === 'true';
+        }
+        function setAmountsVisible(visible) {
+            sessionStorage.setItem(TABLE_AMOUNTS_VISIBLE_KEY, String(visible));
+        }
+        function formatAmount(amount) {
+            return getAmountsVisible() ? formatCurrency(amount) : '***** ' + getCurrencySymbol(currentCurrency);
+        }
 
         function createTable(expenses) {
             if (!expenses || expenses.length === 0) {
@@ -150,7 +170,7 @@
                                 <td>${escapeHTML(expense.name)}</td>
                                 <td>${escapeHTML(expense.category)}</td>
                                 ${hasTags ? `<td class="tags-column">${(expense.tags || []).map(escapeHTML).join(', ')}</td>` : ''}
-                                <td class="amount">${formatCurrency(expense.amount)}</td>
+                                <td class="amount">${formatAmount(expense.amount)}</td>
                                 <td class="date-column">${formatDateFromUTC(expense.date)}</td>
                                 <td>
                                     <button class="edit-button" onclick="editExpenseByIndex(${index})">
@@ -190,7 +210,8 @@
             const selectedContainer = document.getElementById('selected-tags');
             selectedContainer.innerHTML = '';
             selectedTags.clear();
-            (tags || []).forEach(tag => {
+            const tagsToShow = Array.isArray(tags) && tags.length > 0 ? [tags[0]] : [];
+            tagsToShow.forEach(tag => {
                 selectedTags.add(tag);
                 const pill = document.createElement('div');
                 pill.className = 'tag-pill';
@@ -207,6 +228,20 @@
             });
         }
 
+        function toggleTagsVisibility() {
+            const isInvestment = document.getElementById('category').value === CATEGORY_INVESTMENT;
+            const tagsFormGroup = document.getElementById('tagsFormGroup');
+            if (isInvestment) {
+                tagsFormGroup.style.display = 'block';
+            } else {
+                tagsFormGroup.style.display = 'none';
+                selectedTags.clear();
+                document.getElementById('selected-tags').innerHTML = '';
+                document.getElementById('tags-input').value = '';
+                document.getElementById('tags-dropdown').style.display = 'none';
+            }
+        }
+
         function editExpense(id, name, category, amount, tags, date) {
             const isGain = amount > 0;
             document.getElementById('name').value = name;
@@ -214,6 +249,7 @@
             document.getElementById('amount').value = Math.abs(amount);
             document.getElementById('reportGain').checked = isGain;
             renderSelectedTags(tags);
+            toggleTagsVisibility();
             
             const localDate = new Date(date);
             const year = localDate.getFullYear();
@@ -233,11 +269,12 @@
             const container = document.getElementById('tags-input-container');
             const input = document.getElementById('tags-input');
             const dropdown = document.getElementById('tags-dropdown');
-            const formGroup = container.parentElement;
+            const formGroup = container.closest('.form-group');
 
             const addTag = (tag) => {
                 tag = tag.trim();
-                if (tag && !selectedTags.has(tag)) {
+                if (tag) {
+                    selectedTags.clear();
                     selectedTags.add(tag);
                     renderSelectedTags(Array.from(selectedTags));
                 }
@@ -245,9 +282,22 @@
                 dropdown.style.display = 'none';
             };
 
+            const getAvailableTagsForDropdown = () => {
+                let available = [...allTags].filter(t => !selectedTags.has(t));
+                if (investmentTypeSuggestions.length > 0) {
+                    const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t));
+                    const rest = available.filter(t => !investmentTypeSuggestions.includes(t));
+                    available = [...suggested, ...rest];
+                }
+                return available;
+            };
+
+            document.getElementById('category').addEventListener('change', toggleTagsVisibility);
+
             input.addEventListener('focus', () => {
+                if (document.getElementById('category').value !== CATEGORY_INVESTMENT) return;
                 dropdown.innerHTML = '';
-                const availableTags = [...allTags].filter(tag => !selectedTags.has(tag));
+                const availableTags = getAvailableTagsForDropdown();
                 if (availableTags.length > 0) {
                     availableTags.forEach(tag => {
                         const item = document.createElement('div');
@@ -260,46 +310,42 @@
             });
 
             input.addEventListener('input', () => {
+                if (document.getElementById('category').value !== CATEGORY_INVESTMENT) return;
                 const value = input.value.trim().toLowerCase();
                 dropdown.innerHTML = '';
-                const filteredTags = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
+                let filteredTags = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
+                const suggested = investmentTypeSuggestions.filter(t => !selectedTags.has(t) && t.toLowerCase().includes(value));
+                const rest = filteredTags.filter(t => !investmentTypeSuggestions.includes(t));
+                filteredTags = [...suggested, ...rest];
                 
-                if(value && ![...allTags].map(t => t.toLowerCase()).includes(value)) {
+                if (value && ![...allTags].map(t => t.toLowerCase()).includes(value)) {
                     const newItem = document.createElement('div');
                     newItem.textContent = `+ Create "${input.value.trim()}"`;
                     newItem.className = 'new-tag';
                     newItem.onclick = () => addTag(input.value.trim());
                     dropdown.appendChild(newItem);
                 }
-
-                if (filteredTags.length > 0) {
-                    filteredTags.forEach(tag => {
-                        const item = document.createElement('div');
-                        item.textContent = tag;
-                        item.onclick = () => addTag(tag);
-                        dropdown.appendChild(item);
-                    });
-                }
-                
-                dropdown.style.display = 'block';
-                if (dropdown.children.length === 0) dropdown.style.display = 'none';
+                filteredTags.forEach(tag => {
+                    const item = document.createElement('div');
+                    item.textContent = tag;
+                    item.onclick = () => addTag(tag);
+                    dropdown.appendChild(item);
+                });
+                dropdown.style.display = dropdown.children.length > 0 ? 'block' : 'none';
             });
 
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (input.value.trim()) {
-                        addTag(input.value.trim());
-                    }
+                    if (input.value.trim()) addTag(input.value.trim());
                 }
             });
 
             container.addEventListener('click', () => input.focus());
             document.addEventListener('click', (e) => {
-                if (!formGroup.contains(e.target)) {
-                    dropdown.style.display = 'none';
-                }
+                if (!formGroup.contains(e.target)) dropdown.style.display = 'none';
             });
+            toggleTagsVisibility();
         }
 
         async function initialize() {
@@ -313,6 +359,9 @@
                 ).join('');
                 currentCurrency = config.currency;
                 startDate = config.startDate;
+                investmentTypeSuggestions = Array.isArray(config.investmentTypes) && config.investmentTypes.length > 0
+                    ? config.investmentTypes
+                    : ['Index', 'Crypto', 'ETF', 'Bonds'];
                 
                 const response = await fetch('/expenses');
                 if (!response.ok) throw new Error('Failed to fetch data');
@@ -335,6 +384,25 @@
                     '<div class="no-data">Failed to load expenses</div>';
             }
         }
+
+        function applyAmountsToggleButton() {
+            const visible = getAmountsVisible();
+            const icon = document.getElementById('toggleAmountsIcon');
+            const label = document.getElementById('toggleAmountsLabel');
+            if (visible) {
+                icon.className = 'fa-solid fa-eye-slash';
+                label.textContent = 'Hide amounts';
+            } else {
+                icon.className = 'fa-solid fa-eye';
+                label.textContent = 'Show amounts';
+            }
+        }
+        applyAmountsToggleButton();
+        document.getElementById('toggleAmountsVisibility').addEventListener('click', () => {
+            setAmountsVisible(!getAmountsVisible());
+            applyAmountsToggleButton();
+            updateTable();
+        });
 
         document.getElementById('showAllToggle').addEventListener('change', updateTable);
 
@@ -398,6 +466,14 @@
             e.preventDefault();
             const form = e.target;
             const editId = form.dataset.editId;
+            const category = document.getElementById('category').value;
+            if (category === CATEGORY_INVESTMENT && selectedTags.size === 0) {
+                const messageDiv = document.getElementById('formMessage');
+                messageDiv.textContent = 'Please select an asset type for Investment category.';
+                messageDiv.className = 'form-message error';
+                setTimeout(() => { messageDiv.textContent = ''; messageDiv.className = 'form-message'; }, 3000);
+                return;
+            }
             const isGain = document.getElementById('reportGain').checked;
             let amount = parseFloat(document.getElementById('amount').value);
             if (!isGain) {
@@ -406,7 +482,7 @@
 
             const formData = {
                 name: document.getElementById('name').value,
-                category: document.getElementById('category').value,
+                category: category,
                 amount: amount,
                 date: getISODateWithLocalTime(document.getElementById('date').value),
                 tags: Array.from(selectedTags)

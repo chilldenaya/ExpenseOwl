@@ -45,6 +45,7 @@ func runServer(port int) {
 		}
 	})
 	http.HandleFunc("/table", handler.ServeTableView)
+	http.HandleFunc("/investment", handler.ServeInvestmentPage)
 	http.HandleFunc("/settings", handler.ServeSettingsPage)
 
 	// Static File Handlers
@@ -62,6 +63,8 @@ func runServer(port int) {
 	http.HandleFunc("/config", handler.GetConfig)
 	http.HandleFunc("/categories", handler.GetCategories)
 	http.HandleFunc("/categories/edit", handler.UpdateCategories)
+	http.HandleFunc("/investment-types", handler.GetInvestmentTypes)
+	http.HandleFunc("/investment-types/edit", handler.UpdateInvestmentTypes)
 	http.HandleFunc("/currency", handler.GetCurrency)
 	http.HandleFunc("/currency/edit", handler.UpdateCurrency)
 	http.HandleFunc("/startdate", handler.GetStartDate)

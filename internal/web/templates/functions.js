@@ -36,6 +36,11 @@ const currencyBehaviors = {
     mad: {symbol: "DH", useComma: false, useDecimals: true, useSpace: true, right: true},
 };
 
+function getCurrencySymbol(code) {
+    const behavior = currencyBehaviors[code] || { symbol: '$' };
+    return behavior.symbol;
+}
+
 function formatCurrency(amount) {
     const behavior = currencyBehaviors[currentCurrency] || {
         symbol: "$",
