@@ -6,6 +6,13 @@ docker-build:
 docker-push: docker-build
 	docker push $(DOCKER_IMAGE)
 
+docker-run:
+	docker run --rm -d \
+	--name expenseowl \
+	-p 8080:8080 \
+	-v expenseowl:/app/data \
+	chilldenaya/expenseowl:main
+
 run:
 	go run ./cmd/expenseowl
 
