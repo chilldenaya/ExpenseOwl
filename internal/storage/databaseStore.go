@@ -237,6 +237,24 @@ func (s *databaseStore) UpdateStartDate(startDate int) error {
 	})
 }
 
+func (s *databaseStore) GetBudgets() ([]Budget, error) {
+	config, err := s.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	if config.Budgets == nil {
+		return []Budget{}, nil
+	}
+	return config.Budgets, nil
+}
+
+func (s *databaseStore) UpdateBudgets(budgets []Budget) error {
+	return s.updateConfig(func(c *Config) error {
+		c.Budgets = budgets
+		return nil
+	})
+}
+
 func scanExpense(scanner interface{ Scan(...any) error }) (Expense, error) {
 	var expense Expense
 	var tagsStr sql.NullString

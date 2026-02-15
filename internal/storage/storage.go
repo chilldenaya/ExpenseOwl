@@ -23,6 +23,10 @@ type Storage interface {
 	GetStartDate() (int, error)
 	UpdateStartDate(startDate int) error
 
+	// Budgets
+	GetBudgets() ([]Budget, error)
+	UpdateBudgets(budgets []Budget) error
+
 	// Recurring Expenses
 	GetRecurringExpenses() ([]RecurringExpense, error)
 	GetRecurringExpense(id string) (RecurringExpense, error)
@@ -51,6 +55,13 @@ type Config struct {
 	Currency          string             `json:"currency"`
 	StartDate         int                `json:"startDate"`
 	RecurringExpenses []RecurringExpense `json:"recurringExpenses"`
+	Budgets           []Budget           `json:"budgets"`
+}
+
+// Budget represents a monthly budget for a category or overall
+type Budget struct {
+	Category string  `json:"category"` // "" for overall budget
+	Amount   float64 `json:"amount"`
 }
 
 type RecurringExpense struct {
@@ -99,6 +110,7 @@ func (c *Config) SetBaseConfig() {
 	c.Currency = "usd"
 	c.StartDate = 1
 	c.RecurringExpenses = []RecurringExpense{}
+	c.Budgets = []Budget{}
 }
 
 func (c *SystemConfig) SetStorageConfig() {

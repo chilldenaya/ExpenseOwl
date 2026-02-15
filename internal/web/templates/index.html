@@ -122,6 +122,11 @@
             </div>
         </div>
 
+        <div id="budget-section" class="budget-summary-container" style="display: none;">
+            <h3>Budget Overview</h3>
+            <div id="budget-cards-container"></div>
+        </div>
+
         <div id="cashflow-section" class="cashflow-container">
             <div class="cashflow-item income">
                 <div class="cashflow-label">Income</div>
@@ -151,6 +156,7 @@
         let categoryColors = {};
         let allTags = new Set();
         let selectedTags = new Set();
+        let budgets = [];
 
         const DASHBOARD_AMOUNTS_VISIBLE_KEY = 'expenseowl_dashboard_amounts_visible';
         function getAmountsVisible() {
@@ -235,6 +241,7 @@
                 updateCashflow(monthExpenses);
                 createPieChart(categoryData);
                 updateLegend(categoryData);
+                renderBudgets(monthExpenses);
             }
         }
 
@@ -255,6 +262,102 @@
                 balanceElement.classList.add('negative');
                 balanceElement.classList.remove('positive');
             }
+        }
+
+        function renderBudgets(monthExpenses) {
+            const budgetSection = document.getElementById('budget-section');
+            const container = document.getElementById('budget-cards-container');
+            
+            if (!budgets || budgets.length === 0) {
+                budgetSection.style.display = 'none';
+                return;
+            }
+            
+            // Calculate expenses by category for the month (only negative amounts = expenses)
+            const expensesByCategory = {};
+            monthExpenses.forEach(exp => {
+                if (exp.amount < 0) {
+                    const cat = exp.category;
+                    if (!expensesByCategory[cat]) expensesByCategory[cat] = 0;
+                    expensesByCategory[cat] += Math.abs(exp.amount);
+                }
+            });
+            
+            // Calculate total expenses
+            const totalExpenses = Object.values(expensesByCategory).reduce((sum, val) => sum + val, 0);
+            
+            // Find overall budget
+            const overallBudget = budgets.find(b => b.category === '');
+            
+            let html = '';
+            
+            // Overall budget card
+            if (overallBudget && overallBudget.amount > 0) {
+                const percentage = Math.min((totalExpenses / overallBudget.amount) * 100, 100);
+                const actualPercentage = Math.round((totalExpenses / overallBudget.amount) * 100);
+                const isOverBudget = totalExpenses > overallBudget.amount;
+                const remaining = overallBudget.amount - totalExpenses;
+                
+                html += `
+                    <div class="budget-card ${isOverBudget ? 'over-budget' : ''}">
+                        <div class="budget-card-header">
+                            <span class="budget-card-title">Overall Budget</span>
+                            <span class="budget-card-amount">${formatAmount(overallBudget.amount)}</span>
+                        </div>
+                        <div class="budget-progress-bar">
+                            <div class="budget-progress-fill" style="width: ${percentage}%; background-color: ${getBudgetColor(percentage)}"></div>
+                        </div>
+                        <div class="budget-card-percentage" style="color: ${getBudgetColor(percentage)}">${actualPercentage}% used</div>
+                        <div class="budget-card-footer">
+                            <span>Spent: ${formatAmount(totalExpenses)}</span>
+                            <span class="${isOverBudget ? 'text-danger' : ''}">${isOverBudget ? 'Over by ' + formatAmount(Math.abs(remaining)) : 'Remaining: ' + formatAmount(remaining)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Category budget cards
+            budgets.forEach(budget => {
+                if (budget.category === '') return; // Skip overall, already handled
+                const spent = expensesByCategory[budget.category] || 0;
+                const percentage = budget.amount > 0 ? Math.min((spent / budget.amount) * 100, 100) : 0;
+                const actualPercentage = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0;
+                const isOverBudget = spent > budget.amount;
+                const remaining = budget.amount - spent;
+                
+                if (budget.amount > 0) {
+                    html += `
+                        <div class="budget-card ${isOverBudget ? 'over-budget' : ''}">
+                            <div class="budget-card-header">
+                                <span class="budget-card-title">${budget.category}</span>
+                                <span class="budget-card-amount">${formatAmount(budget.amount)}</span>
+                            </div>
+                            <div class="budget-progress-bar">
+                                <div class="budget-progress-fill" style="width: ${percentage}%; background-color: ${getBudgetColor(percentage)}"></div>
+                            </div>
+                            <div class="budget-card-percentage" style="color: ${getBudgetColor(percentage)}">${actualPercentage}% used</div>
+                            <div class="budget-card-footer">
+                                <span>Spent: ${formatAmount(spent)}</span>
+                                <span class="${isOverBudget ? 'text-danger' : ''}">${isOverBudget ? 'Over by ' + formatAmount(Math.abs(remaining)) : 'Remaining: ' + formatAmount(remaining)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            if (html) {
+                container.innerHTML = html;
+                budgetSection.style.display = 'block';
+            } else {
+                budgetSection.style.display = 'none';
+            }
+        }
+
+        function getBudgetColor(percentage) {
+            if (percentage >= 100) return '#ff6b6b';
+            if (percentage >= 90) return '#ffa502';
+            if (percentage >= 75) return '#ffd43b';
+            return '#69af22';
         }
 
         function createPieChart(categoryData) {
@@ -383,6 +486,18 @@
                 const configCategories = config.categories || [];
                 const uniqueCategories = [...new Set([...expenseCategories, ...configCategories])];
                 assignCategoryColors(uniqueCategories);
+                
+                // Load budgets
+                try {
+                    const budgetResponse = await fetch('/budgets');
+                    if (budgetResponse.ok) {
+                        budgets = await budgetResponse.json();
+                    }
+                } catch (e) {
+                    console.error('Failed to load budgets:', e);
+                    budgets = [];
+                }
+                
                 updateMonthDisplay();
                 updateChartAndLegend();
                 setupTagInput();

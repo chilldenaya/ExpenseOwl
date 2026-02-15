@@ -69,6 +69,11 @@ func runServer(port int) {
 	http.HandleFunc("/currency/edit", handler.UpdateCurrency)
 	http.HandleFunc("/startdate", handler.GetStartDate)
 	http.HandleFunc("/startdate/edit", handler.UpdateStartDate)
+
+	// Budgets
+	http.HandleFunc("/budgets", handler.GetBudgets)
+	http.HandleFunc("/budgets/edit", handler.UpdateBudgets)
+
 	// http.HandleFunc("/tags", handler.GetTags)
 	// http.HandleFunc("/tags/edit", handler.UpdateTags)
 

@@ -104,6 +104,31 @@
         </div>
 
         <div class="settings-section">
+            <h2 class="settings-section-title">Budgets</h2>
+            <div class="form-container">
+                <div class="budget-section">
+                    <h3 align="center">Monthly Budgets</h3>
+                    <p class="settings-hint">Set monthly budgets for each category. Budgets reset automatically each month.</p>
+                    
+                    <div class="budget-overall">
+                        <label for="overallBudget">Overall Budget (Total)</label>
+                        <div class="budget-input-row">
+                            <span class="currency-symbol" id="budgetCurrencySymbol">$</span>
+                            <input type="number" id="overallBudget" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div id="category-budgets">
+                        <!-- Category budgets will be dynamically added here -->
+                    </div>
+
+                    <button id="saveBudgets" class="btn btn-primary" style="margin-top: 1rem;">Save Budgets</button>
+                    <div id="budgetsMessage" class="form-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
             <h2 class="settings-section-title">Data Management</h2>
             <div class="form-container">
                 <div class="export-buttons">
@@ -280,6 +305,8 @@
         let recurringExpenses = [];
         let recurringExpenseToDelete = null;
         let recurringExpenseToEdit = null;
+        let budgets = [];
+        let expenseCategories = [];
 
         function showMessage(elementId, message, isSuccess) {
             const messageDiv = document.getElementById(elementId);
@@ -668,7 +695,7 @@
         function renderRecurringExpenses(recurring) {
             const list = document.getElementById('recurring-expenses-list');
             if (!recurring || recurring.length === 0) {
-                list.innerHTML = '<p>No recurring expenses found.</p>';
+                list.innerHTML = '<p style="margin-left: 0.5rem;">No recurring expenses found.</p>';
                 return;
             }
             list.innerHTML = `
@@ -770,6 +797,81 @@
                 showMessage('recurringExpenseMessage', 'Failed to update recurring expense', false);
             } finally {
                 closeRecurringEditModal();
+            }
+        }
+
+        // --- Budget Management ---
+        function renderBudgets() {
+            const container = document.getElementById('category-budgets');
+            container.innerHTML = '';
+            
+            // Filter out Income and Investment from categories for budget setting
+            const expenseCats = categories.filter(c => !LOCKED_CATEGORIES.includes(c));
+            
+            expenseCats.forEach(cat => {
+                const budget = budgets.find(b => b.category === cat);
+                const budgetAmount = budget ? budget.amount : '';
+                
+                const div = document.createElement('div');
+                div.className = 'budget-category-row';
+                div.innerHTML = `
+                    <label>${cat}</label>
+                    <div class="budget-input-row">
+                        <span class="currency-symbol">$</span>
+                        <input type="number" class="category-budget-input" data-category="${cat}" step="0.01" min="0" placeholder="0.00" value="${budgetAmount}">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            // Set overall budget
+            const overallBudget = budgets.find(b => b.category === '');
+            document.getElementById('overallBudget').value = overallBudget ? overallBudget.amount : '';
+        }
+
+        async function saveBudgets() {
+            const budgetData = [];
+            
+            // Get overall budget
+            const overallAmount = parseFloat(document.getElementById('overallBudget').value);
+            if (!isNaN(overallAmount) && overallAmount > 0) {
+                budgetData.push({ category: '', amount: overallAmount });
+            }
+            
+            // Get category budgets
+            const categoryInputs = document.querySelectorAll('.category-budget-input');
+            categoryInputs.forEach(input => {
+                const amount = parseFloat(input.value);
+                if (!isNaN(amount) && amount > 0) {
+                    budgetData.push({ category: input.dataset.category, amount: amount });
+                }
+            });
+            
+            try {
+                const response = await fetch('/budgets/edit', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(budgetData)
+                });
+                if (!response.ok) throw new Error('Failed to save budgets');
+                budgets = budgetData;
+                showMessage('budgetsMessage', 'Budgets saved successfully!', true);
+            } catch (error) {
+                console.error('Error saving budgets:', error);
+                showMessage('budgetsMessage', 'Failed to save budgets', false);
+            }
+        }
+
+        async function loadBudgets() {
+            try {
+                const response = await fetch('/budgets');
+                if (!response.ok) throw new Error('Failed to load budgets');
+                budgets = await response.json();
+                renderBudgets();
+            } catch (error) {
+                console.error('Error loading budgets:', error);
+                budgets = [];
+                renderBudgets();
             }
         }
 
@@ -895,6 +997,9 @@
                 document.getElementById('editRecurringCategory').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
                 renderRecurringExpenses(recurringExpenses);
 
+                // Load budgets
+                await loadBudgets();
+
                 createTagInput('tags-input', 'selected-tags', 'tags-dropdown', addFormSelectedTags);
                 fetch('/version').then(r => r.ok ? r.text() : 'dev').then(version => {
                     const link = document.getElementById('version-link');
@@ -931,6 +1036,7 @@
         // --- Event Listeners ---
         document.getElementById('addCategory').addEventListener('click', addCategory);
         document.getElementById('saveCategories').addEventListener('click', saveCategories);
+        document.getElementById('saveBudgets').addEventListener('click', saveBudgets);
         document.getElementById('addInvestmentType').addEventListener('click', addInvestmentType);
         document.getElementById('saveInvestmentTypes').addEventListener('click', saveInvestmentTypes);
         document.getElementById('newInvestmentType').addEventListener('keypress', e => e.key === 'Enter' && addInvestmentType());

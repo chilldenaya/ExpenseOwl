@@ -203,6 +203,49 @@ func (h *Handler) UpdateStartDate(w http.ResponseWriter, r *http.Request) {
 }
 
 // ------------------------------------------------------------
+// Budget Handlers
+// ------------------------------------------------------------
+
+func (h *Handler) GetBudgets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	budgets, err := h.storage.GetBudgets()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to get budgets"})
+		log.Printf("API ERROR: Failed to get budgets: %v\n", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, budgets)
+}
+
+func (h *Handler) UpdateBudgets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	var budgets []storage.Budget
+	if err := json.NewDecoder(r.Body).Decode(&budgets); err != nil {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
+		return
+	}
+	// Validate budgets
+	for _, b := range budgets {
+		if b.Amount < 0 {
+			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Budget amount cannot be negative"})
+			return
+		}
+	}
+	if err := h.storage.UpdateBudgets(budgets); err != nil {
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to update budgets"})
+		log.Printf("API ERROR: Failed to update budgets: %v\n", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// ------------------------------------------------------------
 // Expense Handlers
 // ------------------------------------------------------------
 

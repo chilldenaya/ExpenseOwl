@@ -226,6 +226,30 @@ func (s *jsonStore) UpdateStartDate(startDate int) error {
 	return s.writeConfigFile(s.configPath, data)
 }
 
+// Budgets
+
+func (s *jsonStore) GetBudgets() ([]Budget, error) {
+	config, err := s.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	if config.Budgets == nil {
+		return []Budget{}, nil
+	}
+	return config.Budgets, nil
+}
+
+func (s *jsonStore) UpdateBudgets(budgets []Budget) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, err := s.readConfigFile(s.configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %v", err)
+	}
+	data.Budgets = budgets
+	return s.writeConfigFile(s.configPath, data)
+}
+
 func (s *jsonStore) GetRecurringExpenses() ([]RecurringExpense, error) {
 	config, err := s.GetConfig()
 	if err != nil {
