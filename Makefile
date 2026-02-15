@@ -11,7 +11,7 @@ docker-run:
 	--name expenseowl \
 	-p 8080:8080 \
 	-v expenseowl:/app/data \
-	chilldenaya/expenseowl:main
+	chilldenaya/expenseowl:latest
 
 run:
 	go run ./cmd/expenseowl

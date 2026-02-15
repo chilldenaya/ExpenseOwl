@@ -622,6 +622,7 @@
                 if (response.ok) {
                     showMessage('currencyMessage', 'Currency saved successfully', true);
                     currentCurrency = currencyCode;
+                    document.getElementById('budgetCurrencySymbol').textContent = getCurrencySymbol(currentCurrency);
                 } else {
                     showMessage('currencyMessage', 'Failed to save currency', false);
                 }
@@ -699,7 +700,8 @@
                 return;
             }
             list.innerHTML = `
-                <table class="expense-table">
+                <div class="table-wrapper">
+                <table class="expense-table recurring-table">
                     <thead><tr><th>Name</th><th>Amount</th><th>Category</th><th>Interval</th><th>Next Occurrence</th><th></th></tr></thead>
                     <tbody>
                         ${recurring.map(r => `
@@ -716,7 +718,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>`;
+                </table></div>`;
         }
 
         function showRecurringDeleteModal(id) {
@@ -985,6 +987,7 @@
                 investmentTypes = [...(config.investmentTypes || ['Index', 'Crypto', 'ETF', 'Bonds'])];
                 currentCurrency = config.currency;
                 currentStartDate = config.startDate;
+                document.getElementById('budgetCurrencySymbol').textContent = getCurrencySymbol(currentCurrency);
                 allTags.clear();
                 (expenses || []).forEach(exp => (exp.tags || []).forEach(tag => allTags.add(tag)));
                 (recurringExpenses || []).forEach(exp => (exp.tags || []).forEach(tag => allTags.add(tag)));

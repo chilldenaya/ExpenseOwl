@@ -322,8 +322,13 @@ header {
     border-collapse: collapse;
     background-color: var(--bg-secondary);
     border-radius: 8px;
-    overflow: hidden;
     table-layout: fixed;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
 }
 
 .expense-table th,
@@ -923,6 +928,20 @@ header {
         display: none;
     }
 
+    .recurring-table {
+        table-layout: auto;
+        min-width: 500px;
+    }
+
+    .recurring-table th:nth-child(4),
+    .recurring-table td:nth-child(4) {
+        display: none;
+    }
+
+    .table-wrapper {
+        border-radius: 8px;
+    }
+
     .expense-table td:last-child {
         white-space: nowrap;
         text-align: right;
@@ -970,11 +989,12 @@ header {
         flex-direction: row;
         justify-content: space-around;
     }
-    
+
     .cashflow-item {
-        padding: 0.5rem;
+        flex: 1 1 calc(33.333% - 0.5rem);
+        min-width: 0;
     }
-    
+
     .cashflow-value {
         font-size: 1rem;
     }
