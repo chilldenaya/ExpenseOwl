@@ -45,17 +45,19 @@
             <button id="nextMonth" class="nav-button"><i class="fa-solid fa-arrow-right"></i></button>
         </div>
         
-        <div class="table-controls">
+        <div class="table-controls-column">
             <button id="toggleAmountsVisibility" class="nav-button" type="button" title="Hide or show amount numbers">
                 <i class="fa-solid fa-eye-slash" id="toggleAmountsIcon"></i> <span id="toggleAmountsLabel">Hide amounts</span>
             </button>
-            <label for="showAllToggle">
+            <label for="showAllToggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.4rem 1rem; border-radius: 9999px; background-color: var(--bg-secondary); border: 1px solid var(--border);">
                 <input type="checkbox" id="showAllToggle" class="styled-checkbox"> Show All Transactions
             </label>
+            <button id="toggleExpenseFormBtn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Expense</button>
         </div>
 
-        <div class="form-container">
-            <form id="expenseForm" class="expense-form">
+        <div id="addExpenseContainer" style="display: none;">
+            <div class="form-container">
+                <form id="expenseForm" class="expense-form">
                 <div class="form-group">
                     <label for="name">Name</label>
                     <input type="text" id="name" value="-" required>
@@ -95,14 +97,10 @@
                     </script>
                 </div>
                 
-                <div class="form-group form-group-checkbox">
-                    <label for="reportGain">Report Gain</label>
-                    <input type="checkbox" id="reportGain" class="styled-checkbox">
-                </div>
-
-                <button type="submit" class="nav-button">Add Expense</button>
-            </form>
-            <div id="formMessage" class="form-message"></div>
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+                </form>
+                <div id="formMessage" class="form-message"></div>
+            </div>
         </div>
 
         <div id="tableContainer">
@@ -144,47 +142,72 @@
             return getAmountsVisible() ? formatCurrency(amount) : '***** ' + getCurrencySymbol(currentCurrency);
         }
 
-        function createTable(expenses) {
+        function createCategoryTable(category, expenses, categoryIndex) {
+            const hasTags = expenses.some(exp => exp.tags && exp.tags.length > 0);
+            const totalAmount = expenses.reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
+            
+            return `
+                <div class="category-table-container">
+                    <div class="category-table-header">
+                        <h3 class="category-title">${escapeHTML(category)}</h3>
+                        <span class="category-total">Total: ${formatAmount(totalAmount)}</span>
+                    </div>
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                ${hasTags ? '<th class="tags-column">Tags</th>' : ''}
+                                <th>Amount</th>
+                                <th class="date-header">Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${expenses.map((expense) => `
+                                <tr>
+                                    <td>${escapeHTML(expense.name)}</td>
+                                    ${hasTags ? `<td class="tags-column">${(expense.tags || []).map(escapeHTML).join(', ')}</td>` : ''}
+                                    <td class="amount">${formatAmount(expense.amount)}</td>
+                                    <td class="date-column">${formatDateFromUTC(expense.date)}</td>
+                                    <td>
+                                        <button class="edit-button" onclick="editExpenseById('${expense.id}')">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="delete-button" onclick="handleDeleteClick(event, '${expense.id}')">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function createTablesByCategory(expenses) {
             if (!expenses || expenses.length === 0) {
                 const message = document.getElementById('showAllToggle').checked ? 
                                 'No transactions found' : 
                                 'No expenses recorded for this month';
                 return `<div class="no-data">${message}</div>`;
             }
-            const hasTags = expenses.some(exp => exp.tags && exp.tags.length > 0);
-            return `
-                <table class="expense-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Category</th>
-                            ${hasTags ? '<th class="tags-column">Tags</th>' : ''}
-                            <th>Amount</th>
-                            <th class="date-header">Date</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${expenses.map((expense, index) => `
-                            <tr>
-                                <td>${escapeHTML(expense.name)}</td>
-                                <td>${escapeHTML(expense.category)}</td>
-                                ${hasTags ? `<td class="tags-column">${(expense.tags || []).map(escapeHTML).join(', ')}</td>` : ''}
-                                <td class="amount">${formatAmount(expense.amount)}</td>
-                                <td class="date-column">${formatDateFromUTC(expense.date)}</td>
-                                <td>
-                                    <button class="edit-button" onclick="editExpenseByIndex(${index})">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                    <button class="delete-button" onclick="handleDeleteClick(event, '${expense.id}')">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+
+            // Group expenses by category
+            const grouped = expenses.reduce((acc, expense) => {
+                const cat = expense.category;
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(expense);
+                return acc;
+            }, {});
+
+            // Sort categories alphabetically
+            const sortedCategories = Object.keys(grouped).sort();
+
+            // Create tables for each category
+            return sortedCategories.map((category, index) => 
+                createCategoryTable(category, grouped[category], index)
+            ).join('');
         }
 
         function updateTable() {
@@ -196,11 +219,11 @@
                 : getMonthExpenses(allExpenses);
             
             const tableContainer = document.getElementById('tableContainer');
-            tableContainer.innerHTML = createTable(expensesForTable);
+            tableContainer.innerHTML = createTablesByCategory(expensesForTable);
         }
 
-        function editExpenseByIndex(index) {
-            const expense = expensesForTable[index];
+        function editExpenseById(id) {
+            const expense = allExpenses.find(exp => exp.id === id);
             if (expense) {
                 editExpense(expense.id, expense.name, expense.category, expense.amount, (expense.tags || []), expense.date);
             }
@@ -243,11 +266,20 @@
         }
 
         function editExpense(id, name, category, amount, tags, date) {
-            const isGain = amount > 0;
+            // Show the form container
+            const formContainer = document.getElementById('addExpenseContainer');
+            formContainer.style.display = 'block';
+            
+            // Update toggle button
+            const toggleBtn = document.getElementById('toggleExpenseFormBtn');
+            toggleBtn.innerHTML = '<i class="fa-solid fa-times"></i> Close';
+            toggleBtn.classList.remove('btn-primary');
+            toggleBtn.classList.add('btn-secondary');
+            
+            // Populate form fields
             document.getElementById('name').value = name;
             document.getElementById('category').value = category;
             document.getElementById('amount').value = Math.abs(amount);
-            document.getElementById('reportGain').checked = isGain;
             renderSelectedTags(tags);
             toggleTagsVisibility();
             
@@ -262,7 +294,7 @@
             const submitButton = form.querySelector('button[type="submit"]');
             submitButton.textContent = 'Update Expense';
             
-            form.scrollIntoView({ behavior: 'smooth' });
+            formContainer.scrollIntoView({ behavior: 'smooth' });
         }
 
         function setupTagInput() {
@@ -406,6 +438,23 @@
 
         document.getElementById('showAllToggle').addEventListener('change', updateTable);
 
+        document.getElementById('toggleExpenseFormBtn').addEventListener('click', function() {
+            const formContainer = document.getElementById('addExpenseContainer');
+            const isHidden = formContainer.style.display === 'none' || formContainer.style.display === '';
+
+            if (isHidden) {
+                formContainer.style.display = 'block';
+                this.innerHTML = '<i class="fa-solid fa-times"></i> Close';
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-secondary');
+            } else {
+                formContainer.style.display = 'none';
+                this.innerHTML = '<i class="fa-solid fa-plus"></i> Add Expense';
+                this.classList.remove('btn-secondary');
+                this.classList.add('btn-primary');
+            }
+        });
+
         document.getElementById('prevMonth').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
             updateMonthDisplay();
@@ -474,9 +523,9 @@
                 setTimeout(() => { messageDiv.textContent = ''; messageDiv.className = 'form-message'; }, 3000);
                 return;
             }
-            const isGain = document.getElementById('reportGain').checked;
+            const isIncome = category === 'Income';
             let amount = parseFloat(document.getElementById('amount').value);
-            if (!isGain) {
+            if (!isIncome) {
                 amount *= -1;
             }
 
@@ -533,7 +582,7 @@
             }
         });
         
-        window.editExpenseByIndex = editExpenseByIndex;
+        window.editExpenseById = editExpenseById;
     </script>
 </body>
 </html>

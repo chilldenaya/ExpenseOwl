@@ -61,12 +61,12 @@
         </div>
 
         <div id="investment-breakdown-section" class="investment-container">
-            <h3>Breakdown by type</h3>
+            <h3>Breakdown by Type</h3>
             <div id="investment-breakdown"></div>
         </div>
 
         <div class="table-controls">
-            <button id="toggleAddFormBtn" class="nav-button"><i class="fa-solid fa-plus"></i> Add asset / Reduce asset</button>
+            <button id="toggleAddFormBtn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Asset / Reduce Asset</button>
         </div>
 
         <div id="addInvestmentContainer" style="display: none;">
@@ -99,21 +99,21 @@
                         <label for="date">Date</label>
                         <input type="date" id="date" required>
                     </div>
-                    <button type="submit" class="nav-button">Save transaction</button>
+                    <button type="submit" class="btn btn-primary">Save transaction</button>
                 </form>
                 <div id="formMessage" class="form-message"></div>
             </div>
         </div>
 
-        <div class="investment-list-section">
-            <h3>All asset transactions</h3>
+        <div class="investment-container">
+            <h3>All Asset Transactions</h3>
             <div id="investmentListContainer"></div>
         </div>
     </div>
 
     <div id="deleteModal" class="modal">
         <div class="modal-content">
-            <h3>Delete asset transaction</h3>
+            <h3>Delete Asset Transaction</h3>
             <p>Remove this entry? (cannot be undone)</p>
             <div class="modal-buttons">
                 <button class="modal-button" onclick="closeDeleteModal()">Cancel</button>
@@ -490,9 +490,13 @@
                     if (el.style.display === 'none' || !el.style.display) {
                         el.style.display = 'block';
                         btn.innerHTML = '<i class="fa-solid fa-times"></i> Close';
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-secondary');
                     } else {
                         el.style.display = 'none';
-                        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add asset / Reduce asset';
+                        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Asset / Reduce Asset';
+                        btn.classList.remove('btn-secondary');
+                        btn.classList.add('btn-primary');
                     }
                 });
 

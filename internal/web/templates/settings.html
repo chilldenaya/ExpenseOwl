@@ -39,78 +39,73 @@
             </div>
         </header>
 
-        <div class="info-field">
-            Version: <a href="https://github.com/tanq16/expenseowl/releases/latest" target="_blank" rel="noopener noreferrer">v4.0</a>
-            <span class="separator">|</span>
-            <a href="https://github.com/tanq16/expenseowl/blob/main/README.md" target="_blank" rel="noopener noreferrer">Documentation</a>
-            <span class="separator">|</span>
-            <a href="https://github.com/tanq16/expenseowl" target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
-
-        <div class="form-container">
-            <h2 align="center">Category Settings</h2>
-            <div id="categories-manager">
-                <div id="categories-list" class="categories-list">
+        <div class="settings-section">
+            <h2 class="settings-section-title">Categories & Organization</h2>
+            <div class="settings-container">
+                <div class="form-container half-width">
+                    <h3 align="center">Expense Categories</h3>
+                    <div id="categories-manager">
+                        <div id="categories-list" class="categories-list"></div>
+                        <div class="category-input-container">
+                            <input type="text" id="newCategory" placeholder="Add new category">
+                            <button id="addCategory" class="nav-button">Add</button>
+                        </div>
+                        <button id="saveCategories" class="nav-button">Save Categories</button>
+                        <div id="categoriesMessage" class="form-message"></div>
+                    </div>
                 </div>
-                <div class="category-input-container">
-                    <input type="text" id="newCategory" placeholder="Add new category">
-                    <button id="addCategory" class="nav-button">Add</button>
+                <div class="form-container half-width">
+                    <h3 align="center">Asset Types</h3>
+                    <div id="investment-types-manager">
+                        <p class="settings-hint">Types used for asset transactions (e.g. Index, Crypto, ETF, Bonds).</p>
+                        <div id="investment-types-list" class="categories-list"></div>
+                        <div class="category-input-container">
+                            <input type="text" id="newInvestmentType" placeholder="Add new asset type">
+                            <button id="addInvestmentType" class="nav-button">Add</button>
+                        </div>
+                        <button id="saveInvestmentTypes" class="nav-button">Save Asset Types</button>
+                        <div id="investmentTypesMessage" class="form-message"></div>
+                    </div>
                 </div>
-                <button id="saveCategories" class="nav-button">Save Categories</button>
-                <div id="categoriesMessage" class="form-message"></div>
             </div>
         </div>
 
-        <div class="form-container">
-            <h2 align="center">Asset Types</h2>
-            <div id="investment-types-manager">
-                <p class="settings-hint">Types used for asset transactions (e.g. Index, Crypto, ETF, Bonds). Shown in the Assets tab and when selecting Investment category.</p>
-                <div id="investment-types-list" class="categories-list">
+        <div class="settings-section">
+            <h2 class="settings-section-title">Preferences</h2>
+            <div class="settings-container three-col">
+                <div class="form-container">
+                    <h3 align="center">Currency</h3>
+                    <div class="currency-selector">
+                        <select id="currencySelect"></select>
+                        <button id="saveCurrency" class="nav-button">Save</button>
+                    </div>
+                    <div id="currencyMessage" class="form-message"></div>
                 </div>
-                <div class="category-input-container">
-                    <input type="text" id="newInvestmentType" placeholder="Add new asset type">
-                    <button id="addInvestmentType" class="nav-button">Add</button>
+                <div class="form-container">
+                    <h3 align="center">Start Date</h3>
+                    <div class="start-date-manager">
+                        <input type="number" id="startDate" min="1" max="31" placeholder="1">
+                        <button id="saveStartDate" class="nav-button">Save</button>
+                    </div>
+                    <div id="startDateMessage" class="form-message"></div>
                 </div>
-                <button id="saveInvestmentTypes" class="nav-button">Save Asset Types</button>
-                <div id="investmentTypesMessage" class="form-message"></div>
+                <div class="form-container">
+                    <h3 align="center">Theme</h3>
+                    <div class="theme-selector">
+                        <select id="themeSelect">
+                            <option value="system">System Default</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                    <div id="themeMessage" class="form-message"></div>
+                </div>
             </div>
         </div>
 
-        <div class="settings-container">
-            <div class="form-container half-width">
-                <h2 align="center">Currency Settings</h2>
-                <div class="currency-selector">
-                    <select id="currencySelect">
-                    </select>
-                    <button id="saveCurrency" class="nav-button">Save</button>
-                </div>
-                <div id="currencyMessage" class="form-message"></div>
-            </div>
-            
-            <div class="form-container half-width">
-                <h2 align="center">Start Date Settings</h2>
-                <div class="start-date-manager">
-                    <input type="number" id="startDate" min="1" max="31" placeholder="1">
-                    <button id="saveStartDate" class="nav-button">Save</button>
-                </div>
-                <div id="startDateMessage" class="form-message"></div>
-            </div>
-        </div>
-
-        <div class="settings-container">
-            <div class="form-container half-width">
-                <h2 align="center">Theme Settings</h2>
-                <div class="theme-selector">
-                    <select id="themeSelect">
-                        <option value="system">System Default</option>
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                    </select>
-                </div>
-                <div id="themeMessage" class="form-message"></div>
-            </div>
-            <div class="form-container half-width">
-                <h2 align="center">Import/Export Data</h2>
+        <div class="settings-section">
+            <h2 class="settings-section-title">Data Management</h2>
+            <div class="form-container">
                 <div class="export-buttons">
                     <div class="export-options">
                         <a href="/export/csv" id="csv-export-file" class="nav-button" download="expenses.csv">Export to CSV</a>
@@ -134,10 +129,15 @@
                 </div>
             </div>
         </div>
-        
-        <div class="form-container">
-            <h2 align="center">Recurring Transactions</h2>
-            <form id="recurringExpenseForm" class="expense-form recurring-expense-form">
+
+        <div class="settings-section">
+            <h2 class="settings-section-title">Automation</h2>
+            <div class="table-controls-column">
+                <button id="toggleRecurringFormBtn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Recurring Transaction</button>
+            </div>
+            <div id="addRecurringContainer" style="display: none;">
+                <div class="form-container">
+                    <form id="recurringExpenseForm" class="expense-form recurring-expense-form">
                 <div class="form-group">
                     <label for="recurringName">Name</label>
                     <input type="text" id="recurringName" required>
@@ -183,16 +183,15 @@
                     <label for="recurringOccurrences">Occurrences</label>
                     <input type="number" id="recurringOccurrences" min="2" value="2" required>
                 </div>
-                <div class="form-group form-group-checkbox">
-                    <label for="recurringReportGain">Report Gain</label>
-                    <input type="checkbox" id="recurringReportGain" class="styled-checkbox">
+                <div class="form-group form-group-submit">
+                    <button type="submit" class="btn btn-primary">Add Recurring Transaction</button>
                 </div>
-                <button type="submit" class="nav-button">Add Recurring Transaction</button>
-            </form>
-            <div id="recurringExpenseMessage" class="form-message"></div>
-            <h3 align="center" style="margin-top: 2rem;">Existing Recurring Transactions</h3>
-            <div id="recurring-expenses-list">
+                    </form>
+                    <div id="recurringExpenseMessage" class="form-message"></div>
+                </div>
             </div>
+            <h3 align="center" style="margin-top: 2rem;">Existing Recurring Transactions</h3>
+            <div id="recurring-expenses-list"></div>
         </div>
     </div>
 
@@ -249,10 +248,6 @@
                     <label for="editRecurringOccurrences">Occurrences (0 for indefinite)</label>
                     <input type="number" id="editRecurringOccurrences" min="0" value="0" required>
                 </div>
-                <div class="form-group form-group-checkbox">
-                    <label for="editRecurringReportGain">Report Gain</label>
-                    <input type="checkbox" id="editRecurringReportGain" class="styled-checkbox">
-                </div>
             </form>
             <div class="modal-buttons">
                 <button class="modal-button" onclick="closeRecurringEditModal()">Cancel</button>
@@ -261,6 +256,16 @@
             </div>
         </div>
     </div>
+
+    <footer class="page-footer">
+        <div class="footer-content">
+            <span>Version: <a href="https://github.com/tanq16/expenseowl/releases/latest" target="_blank" rel="noopener noreferrer">v4.0</a></span>
+            <span class="footer-separator">|</span>
+            <a href="https://github.com/tanq16/expenseowl/blob/main/README.md" target="_blank" rel="noopener noreferrer">Documentation</a>
+            <span class="footer-separator">|</span>
+            <a href="https://github.com/tanq16/expenseowl" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+    </footer>
 
     <script src="/functions.js"></script>
     <script>
@@ -286,23 +291,27 @@
             }, 3000);
         }
 
+        const LOCKED_CATEGORIES = ['Income', 'Investment'];
+
         // --- Category Management ---
         function renderCategories() {
             const list = document.getElementById('categories-list');
             list.innerHTML = '';
             categories.forEach((category, index) => {
+                const isLocked = LOCKED_CATEGORIES.includes(category);
                 const item = document.createElement('div');
-                item.className = 'category-item';
+                item.className = 'category-item' + (isLocked ? ' locked' : '');
                 item.draggable = true;
                 item.dataset.index = index;
                 item.innerHTML = `
                     <div class="category-handle-area">
                         <span class="drag-handle"><i class="fa-solid fa-grip-lines"></i></span>
                         <span>${category}</span>
+                        ${isLocked ? '<span class="locked-badge"><i class="fa-solid fa-lock"></i></span>' : ''}
                     </div>
-                    <button class="delete-button" onclick="removeCategory(${index})">
+                    ${isLocked ? '' : `<button class="delete-button" onclick="removeCategory(${index})">
                         <i class="fa-solid fa-times"></i>
-                    </button>
+                    </button>`}
                 `;
                 item.addEventListener('dragstart', handleDragStart);
                 item.addEventListener('dragover', handleDragOver);
@@ -372,6 +381,10 @@
             const input = document.getElementById('newCategory');
             let category = input.value.trim();
             category = category.replace(/[<>]/g, ' ').trim();
+            if (LOCKED_CATEGORIES.includes(category)) {
+                showMessage('categoriesMessage', `"${category}" is a reserved category name`, false);
+                return;
+            }
             if (category && !categories.includes(category)) {
                 categories.push(category);
                 renderCategories();
@@ -384,6 +397,11 @@
         }
 
         function removeCategory(index) {
+            const category = categories[index];
+            if (LOCKED_CATEGORIES.includes(category)) {
+                showMessage('categoriesMessage', `"${category}" category cannot be removed`, false);
+                return;
+            }
             categories.splice(index, 1);
             renderCategories();
         }
@@ -704,7 +722,6 @@
             if (!recurringExpenseToEdit) return;
             document.getElementById('editRecurringName').value = recurringExpenseToEdit.name;
             document.getElementById('editRecurringAmount').value = Math.abs(recurringExpenseToEdit.amount);
-            document.getElementById('editRecurringReportGain').checked = recurringExpenseToEdit.amount > 0;
             document.getElementById('editRecurringCategory').value = recurringExpenseToEdit.category;
             document.getElementById('editRecurringInterval').value = recurringExpenseToEdit.interval;
             document.getElementById('editRecurringStartDate').value = new Date(recurringExpenseToEdit.startDate).toISOString().split('T')[0];
@@ -721,8 +738,10 @@
 
         async function confirmRecurringUpdate(updateAll) {
             if (!recurringExpenseToEdit) return;
+            const category = document.getElementById('editRecurringCategory').value;
+            const isIncome = category === 'Income';
             let amount = parseFloat(document.getElementById('editRecurringAmount').value);
-            if (!document.getElementById('editRecurringReportGain').checked) {
+            if (!isIncome) {
                 amount *= -1;
             }
 
@@ -730,7 +749,7 @@
                 ...recurringExpenseToEdit,
                 name: document.getElementById('editRecurringName').value,
                 amount: amount,
-                category: document.getElementById('editRecurringCategory').value,
+                category: category,
                 tags: Array.from(editFormSelectedTags),
                 interval: document.getElementById('editRecurringInterval').value,
                 startDate: new Date(document.getElementById('editRecurringStartDate').value).toISOString(),
@@ -858,6 +877,9 @@
                 recurringExpenses = await recurringExpensesResponse.json() || [];
 
                 categories = [...config.categories];
+                LOCKED_CATEGORIES.forEach(cat => {
+                    if (!categories.includes(cat)) categories.unshift(cat);
+                });
                 investmentTypes = [...(config.investmentTypes || ['Index', 'Crypto', 'ETF', 'Bonds'])];
                 currentCurrency = config.currency;
                 currentStartDate = config.startDate;
@@ -920,14 +942,15 @@
 
         document.getElementById('recurringExpenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const isGain = document.getElementById('recurringReportGain').checked;
+            const category = document.getElementById('recurringCategory').value;
+            const isIncome = category === 'Income';
             let amount = parseFloat(document.getElementById('recurringAmount').value);
-            if (!isGain) amount *= -1;
+            if (!isIncome) amount *= -1;
 
             const formData = {
                 name: document.getElementById('recurringName').value,
                 amount: amount,
-                category: document.getElementById('recurringCategory').value,
+                category: category,
                 tags: Array.from(addFormSelectedTags),
                 interval: document.getElementById('recurringInterval').value,
                 startDate: getISODateWithLocalTime(document.getElementById('recurringStartDate').value),
@@ -957,6 +980,24 @@
         });
 
         document.addEventListener('DOMContentLoaded', initialize);
+
+        document.getElementById('toggleRecurringFormBtn').addEventListener('click', function() {
+            const formContainer = document.getElementById('addRecurringContainer');
+            const isHidden = formContainer.style.display === 'none' || formContainer.style.display === '';
+
+            if (isHidden) {
+                formContainer.style.display = 'block';
+                this.innerHTML = '<i class="fa-solid fa-times"></i> Close';
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-secondary');
+            } else {
+                formContainer.style.display = 'none';
+                this.innerHTML = '<i class="fa-solid fa-plus"></i> Add Recurring Transaction';
+                this.classList.remove('btn-secondary');
+                this.classList.add('btn-primary');
+            }
+        });
+
         window.removeCategory = removeCategory;
         window.showRecurringDeleteModal = showRecurringDeleteModal;
         window.closeRecurringDeleteModal = closeRecurringDeleteModal;
