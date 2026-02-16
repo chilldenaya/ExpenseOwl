@@ -1,3 +1,44 @@
+# ExpenseOwl (Fork)
+
+> This is a forked version of [ExpenseOwl](https://github.com/tanq16/expenseowl) with custom modifications.
+
+This fork includes additional features and improvements tailored for personal use. The primary changes include [add your specific changes here].
+
+## Quick Start
+
+### Docker
+
+This fork uses a custom Docker image:
+
+```bash
+docker run --rm -d \
+  --name expenseowl \
+  -p 8080:8080 \
+  -v expenseowl:/app/data \
+  chilldenaya/expenseowl:latest
+```
+
+Or using Docker Compose:
+
+```yaml
+services:
+  expenseowl:
+    image: chilldenaya/expenseowl:latest
+    restart: unless-stopped
+    ports:
+      - 5006:8080
+    volumes:
+      - /path/to/data:/app/data
+```
+
+### Build from Source
+
+```bash
+go run ./cmd/expenseowl
+```
+
+---
+
 <p align="center">
 <img src="/assets/logo.png" alt="ExpenseOwl Logo" width="200" height="200" /><br>
 </p>
