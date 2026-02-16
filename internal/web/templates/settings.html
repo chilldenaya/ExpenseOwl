@@ -819,7 +819,7 @@
                 div.innerHTML = `
                     <label>${cat}</label>
                     <div class="budget-input-row">
-                        <span class="currency-symbol">$</span>
+                        <span class="currency-symbol">${getCurrencySymbol(currentCurrency)}</span>
                         <input type="number" class="category-budget-input" data-category="${cat}" step="0.01" min="0" placeholder="0.00" value="${budgetAmount}">
                     </div>
                 `;
